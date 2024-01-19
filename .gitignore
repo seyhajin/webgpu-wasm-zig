@@ -1,0 +1,12 @@
+
+.vscode/*
+
+zig-cache/*
+zig-out/*
+
+medias/*
+publish/*
+
+webgpu.html
+webgpu.js
+webgpu.wasm
