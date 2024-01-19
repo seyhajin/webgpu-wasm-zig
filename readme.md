@@ -34,9 +34,11 @@ Example with Emscripten installed with Homebrew (`brew install emscripten`, v3.1
 zig build --sysroot /usr/local/Cellar/emscripten/3.1.51/libexec/cache/sysroot
 ```
 
-> [!NOTE] `build.zig` is preconfigured to build to `wasm32-emscripten` target only. 
+> [!NOTE] 
+> `build.zig` is preconfigured to build to `wasm32-emscripten` target only. 
 
-> [!CAUTION] Must provide Emscripten sysroot via `--sysroot` argument. 
+> [!CAUTION] 
+> Must provide Emscripten sysroot via `--sysroot` argument. 
 
 ### Run
 
@@ -44,7 +46,8 @@ Launch a web server to run example before open it to WebGPU compatible web brows
 
 e.g. : launch `python3 -m http.server` and open web browser to `localhost:8000`.
 
-> [!TIP] Use [Live Server](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) extension in Visual Studio Code to open the HTML file. This extension will update automatically page in real-time when you rebuild the example.
+> [!TIP]
+> Use [Live Server](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) extension in Visual Studio Code to open the HTML file. This extension will update automatically page in real-time when you rebuild the example.
 
 ## Prerequisites
 
