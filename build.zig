@@ -2,14 +2,13 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 pub fn build(b: *std.Build) !void {
-
     const target = b.resolveTargetQuery(.{ .cpu_arch = .wasm32, .os_tag = .emscripten });
     const optimize = b.standardOptimizeOption(.{});
 
     // Build as static library
     const lib = b.addStaticLibrary(.{
         .name = "webgpu",
-        .root_source_file = .{ .path = "main.zig" },
+        .root_source_file = b.path("main.zig"),
         .target = target,
         .optimize = optimize,
     });
@@ -24,7 +23,7 @@ pub fn build(b: *std.Build) !void {
         return error.Wasm32SysRootExpected;
     }
     const emcc_include = b.pathJoin(&.{ arg_sysroot.?, "include" });
-    lib.addSystemIncludePath(.{ .path = emcc_include }); // isystem
+    lib.addSystemIncludePath(.{ .cwd_relative = emcc_include }); // isystem
 
     // Define `emcc` executable name
     const emcc_exe = switch (builtin.os.tag) {
@@ -33,15 +32,15 @@ pub fn build(b: *std.Build) !void {
     };
 
     // Link with Emscripten
-    const emcc_cmd = b.addSystemCommand(&[_][]const u8{ emcc_exe });
+    const emcc_cmd = b.addSystemCommand(&[_][]const u8{emcc_exe});
     emcc_cmd.addFileArg(lib.getEmittedBin());
     emcc_cmd.addArgs(&[_][]const u8{
         "-o",
-        b.fmt("{s}.html", .{ lib.name }),
+        b.fmt("{s}.html", .{lib.name}),
         "-Oz",
         "--shell-file=shell.html",
         "-sASYNCIFY",
-        "-sUSE_WEBGPU=1"
+        "-sUSE_WEBGPU=1",
     });
     emcc_cmd.step.dependOn(&lib.step);
 
@@ -54,5 +53,4 @@ pub fn build(b: *std.Build) !void {
     }
 
     b.getInstallStep().dependOn(&emcc_cmd.step);
-
 }
