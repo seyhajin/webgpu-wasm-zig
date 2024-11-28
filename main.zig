@@ -23,7 +23,7 @@ const State = struct {
         swapchain: c.WGPUSwapChain = null,
         pipeline: c.WGPURenderPipeline = null,
     } = .{},
-    
+
     // resources
     res: struct {
         vbuffer: c.WGPUBuffer = null,
@@ -44,45 +44,45 @@ var state = State{};
 // vertex and fragment shaders
 //--------------------------------------------------
 
-const wgsl_triangle = 
-\\  /* attribute/uniform decls */
-\\  
-\\  struct VertexIn {
-\\      @location(0) aPos : vec2<f32>,
-\\      @location(1) aCol : vec3<f32>,
-\\  };
-\\  struct VertexOut {
-\\      @location(0) vCol : vec3<f32>,
-\\      @builtin(position) Position : vec4<f32>,
-\\  };
-\\  struct Rotation {
-\\      @location(0) degs : f32,
-\\  };
-\\  @group(0) @binding(0) var<uniform> uRot : Rotation;
-\\  
-\\  /* vertex shader */
-\\  
-\\  @vertex
-\\  fn vs_main(input : VertexIn) -> VertexOut {
-\\      var rads : f32 = radians(uRot.degs);
-\\      var cosA : f32 = cos(rads);
-\\      var sinA : f32 = sin(rads);
-\\      var rot : mat3x3<f32> = mat3x3<f32>(
-\\          vec3<f32>( cosA, sinA, 0.0),
-\\          vec3<f32>(-sinA, cosA, 0.0),
-\\          vec3<f32>( 0.0,  0.0,  1.0));
-\\      var output : VertexOut;
-\\      output.Position = vec4<f32>(rot * vec3<f32>(input.aPos, 1.0), 1.0);
-\\      output.vCol = input.aCol;
-\\      return output;
-\\  }
-\\  
-\\  /* fragment shader */
-\\  
-\\  @fragment
-\\  fn fs_main(@location(0) vCol : vec3<f32>) -> @location(0) vec4<f32> {
-\\      return vec4<f32>(vCol, 1.0);
-\\  }
+const wgsl_triangle =
+    \\  /* attribute/uniform decls */
+    \\  
+    \\  struct VertexIn {
+    \\      @location(0) aPos : vec2<f32>,
+    \\      @location(1) aCol : vec3<f32>,
+    \\  };
+    \\  struct VertexOut {
+    \\      @location(0) vCol : vec3<f32>,
+    \\      @builtin(position) Position : vec4<f32>,
+    \\  };
+    \\  struct Rotation {
+    \\      @location(0) degs : f32,
+    \\  };
+    \\  @group(0) @binding(0) var<uniform> uRot : Rotation;
+    \\  
+    \\  /* vertex shader */
+    \\  
+    \\  @vertex
+    \\  fn vs_main(input : VertexIn) -> VertexOut {
+    \\      var rads : f32 = radians(uRot.degs);
+    \\      var cosA : f32 = cos(rads);
+    \\      var sinA : f32 = sin(rads);
+    \\      var rot : mat3x3<f32> = mat3x3<f32>(
+    \\          vec3<f32>( cosA, sinA, 0.0),
+    \\          vec3<f32>(-sinA, cosA, 0.0),
+    \\          vec3<f32>( 0.0,  0.0,  1.0));
+    \\      var output : VertexOut;
+    \\      output.Position = vec4<f32>(rot * vec3<f32>(input.aPos, 1.0), 1.0);
+    \\      output.vCol = input.aCol;
+    \\      return output;
+    \\  }
+    \\  
+    \\  /* fragment shader */
+    \\  
+    \\  @fragment
+    \\  fn fs_main(@location(0) vCol : vec3<f32>) -> @location(0) vec4<f32> {
+    \\      return vec4<f32>(vCol, 1.0);
+    \\  }
 ;
 
 //--------------------------------------------------
@@ -92,7 +92,7 @@ const wgsl_triangle =
 //--------------------------------------------------
 
 pub fn main() !void {
-    
+
     //-----------------
     // init
     //-----------------
@@ -102,7 +102,7 @@ pub fn main() !void {
     state.wgpu.queue = c.wgpuDeviceGetQueue(state.wgpu.device);
 
     _ = resize(0, null, null);
-    _ = c.emscripten_set_resize_callback(2, null, 0, resize); //FIXME: use `EMSCRIPTEN_EVENT_TARGET_WINDOW` const
+    // _ = c.emscripten_set_resize_callback(2, null, false, resize); //FIXME: use `EMSCRIPTEN_EVENT_TARGET_WINDOW` const
 
     //-----------------
     // Setup pipeline
@@ -140,8 +140,8 @@ pub fn main() !void {
             // Buffer binding layout
             .buffer = .{
                 .type = c.WGPUBufferBindingType_Uniform,
-            }
-        }
+            },
+        },
     });
     const pipeline_layout = c.wgpuDeviceCreatePipelineLayout(state.wgpu.device, &c.WGPUPipelineLayoutDescriptor{
         .bindGroupLayoutCount = 1,
@@ -194,7 +194,7 @@ pub fn main() !void {
         .multisample = .{
             .count = 1,
             .mask = 0xFFFFFFFF,
-            .alphaToCoverageEnabled = false,
+            .alphaToCoverageEnabled = 0,
         },
         // Depth-stencil state
         .depthStencil = null,
@@ -211,10 +211,10 @@ pub fn main() !void {
     // Create the vertex buffer (x, y, r, g, b) and index buffer
     const vertex_data = [_]f32{
         // x, y          // r, g, b
-       -0.5, -0.5,     1.0, 0.0, 0.0, // bottom-left
-        0.5, -0.5,     0.0, 1.0, 0.0, // bottom-right
-        0.5,  0.5,     0.0, 0.0, 1.0, // top-right
-       -0.5,  0.5,     1.0, 1.0, 0.0, // top-left
+        -0.5, -0.5, 1.0, 0.0, 0.0, // bottom-left
+        0.5, -0.5, 0.0, 1.0, 0.0, // bottom-right
+        0.5, 0.5, 0.0, 0.0, 1.0, // top-right
+        -0.5, 0.5, 1.0, 1.0, 0.0, // top-left
     };
     const index_data = [_]u16{
         0, 1, 2,
@@ -222,7 +222,7 @@ pub fn main() !void {
     };
     state.res.vbuffer = createBuffer(&vertex_data, @sizeOf(@TypeOf(vertex_data)), c.WGPUBufferUsage_Vertex);
     state.res.ibuffer = createBuffer(&index_data, @sizeOf(@TypeOf(index_data)), c.WGPUBufferUsage_Index);
-    
+
     // Create the uniform bind group
     state.res.ubuffer = createBuffer(&state.vars.rot, @sizeOf(@TypeOf(state.vars.rot)), c.WGPUBufferUsage_Uniform);
     state.res.bindgroup = c.wgpuDeviceCreateBindGroup(state.wgpu.device, &c.WGPUBindGroupDescriptor{
@@ -241,7 +241,7 @@ pub fn main() !void {
     // Main loop
     //-----------------
 
-    c.emscripten_set_main_loop(draw, 0, 1);
+    c.emscripten_set_main_loop(draw, 0, true);
 
     //-----------------
     // Quit
@@ -253,7 +253,6 @@ pub fn main() !void {
     c.wgpuDeviceRelease(state.wgpu.device);
     c.wgpuInstanceRelease(state.wgpu.instance);
 }
-
 
 //--------------------------------------------------
 // callbacks and functions
@@ -279,6 +278,7 @@ fn draw() callconv(.C) void {
             .loadOp = c.WGPULoadOp_Clear,
             .storeOp = c.WGPUStoreOp_Store,
             .clearValue = c.WGPUColor{ .r = 0.2, .g = 0.2, .b = 0.3, .a = 1.0 },
+            .depthSlice = c.WGPU_DEPTH_SLICE_UNDEFINED,
         },
     });
 
@@ -295,7 +295,7 @@ fn draw() callconv(.C) void {
     // Create Command Buffer
     const cmd_buffer = c.wgpuCommandEncoderFinish(cmd_encoder, null); // after 'end render pass'
 
-    // Submit commands    
+    // Submit commands
     c.wgpuQueueSubmit(state.wgpu.queue, 1, &cmd_buffer);
 
     // Release all
@@ -306,12 +306,13 @@ fn draw() callconv(.C) void {
 }
 
 fn resize(event_type: i32, ui_event: ?*const c.EmscriptenUiEvent, user_data: ?*anyopaque) callconv(.C) i32 {
-    _ = event_type; _ = ui_event; _ = user_data; // unused
+    _ = event_type;
+    _ = ui_event;
+    _ = user_data; // unused
 
     var w: f64 = 0;
     var h: f64 = 0;
     _ = c.emscripten_get_element_css_size(state.canvas.name.ptr, &w, &h);
-
 
     state.canvas.width = @intFromFloat(w);
     state.canvas.height = @intFromFloat(h);
@@ -323,12 +324,12 @@ fn resize(event_type: i32, ui_event: ?*const c.EmscriptenUiEvent, user_data: ?*a
         state.wgpu.swapchain = null;
     }
 
-    state.wgpu.swapchain = createSwapchain();
+    state.wgpu.swapchain = createSwapChain();
 
     return 1;
 }
 
-fn createSwapchain() c.WGPUSwapChain {
+fn createSwapChain() c.WGPUSwapChain {
     const surface = c.wgpuInstanceCreateSurface(state.wgpu.instance, &c.WGPUSurfaceDescriptor{
         .nextInChain = @ptrCast(&c.WGPUSurfaceDescriptorFromCanvasHTMLSelector{
             .chain = .{ .sType = c.WGPUSType_SurfaceDescriptorFromCanvasHTMLSelector },
@@ -337,11 +338,11 @@ fn createSwapchain() c.WGPUSwapChain {
     });
 
     return c.wgpuDeviceCreateSwapChain(state.wgpu.device, surface, &c.WGPUSwapChainDescriptor{
-        .usage = c.WGPUTextureUsage_RenderAttachment,
-        .format = c.WGPUTextureFormat_BGRA8Unorm,
+        .usage = c.WGPUTextureUsage_RenderAttachment, // Ensure this includes render attachment usage.
+        .format = c.WGPUTextureFormat_BGRA8Unorm, // Use a valid color format.
         .width = @intCast(state.canvas.width),
         .height = @intCast(state.canvas.height),
-        .presentMode = c.WGPUPresentMode_Fifo,
+        .presentMode = c.WGPUPresentMode_Fifo, // Use an appropriate present mode.
     });
 }
 
@@ -351,10 +352,7 @@ fn createShader(code: [*:0]const u8, label: [*:0]const u8) c.WGPUShaderModule {
         .code = code,
     };
 
-    return c.wgpuDeviceCreateShaderModule(state.wgpu.device, &c.WGPUShaderModuleDescriptor{
-        .nextInChain = @ptrCast(&wgsl),
-        .label = label
-    });
+    return c.wgpuDeviceCreateShaderModule(state.wgpu.device, &c.WGPUShaderModuleDescriptor{ .nextInChain = @ptrCast(&wgsl), .label = label });
 }
 
 fn createBuffer(data: ?*const anyopaque, size: usize, usage: c.WGPUBufferUsage) c.WGPUBuffer {
