@@ -33,6 +33,10 @@ Example with Emscripten installed with Homebrew (`brew install emscripten`, v4.0
 ```
 zig build --sysroot /usr/local/Cellar/emscripten/4.0.8/libexec/cache/sysroot
 ```
+Or automatically search for the active version :
+```
+zig build --sysroot `readlink -f $(brew --prefix emscripten)`/libexec/cache/sysroot
+```
 
 > [!NOTE] 
 > `build.zig` is preconfigured to build to `wasm32-emscripten` target only. 
