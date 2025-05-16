@@ -29,9 +29,9 @@ Build the example with `zig build` command, which will generate 3 new files (`.h
 zig build --sysroot [path/to/emsdk]/upstream/emscripten/cache/sysroot
 ```
 
-Example with Emscripten installed with Homebrew (`brew install emscripten`, v3.1.51) on macOS :
+Example with Emscripten installed with Homebrew (`brew install emscripten`, v4.0.8) on macOS :
 ```
-zig build --sysroot /usr/local/Cellar/emscripten/3.1.51/libexec/cache/sysroot
+zig build --sysroot /usr/local/Cellar/emscripten/4.0.8/libexec/cache/sysroot
 ```
 
 > [!NOTE] 
@@ -51,8 +51,8 @@ e.g. : launch `python3 -m http.server` and open web browser to `localhost:8000`.
 
 ## Prerequisites
 
-* [zig](https://www.zig.org/download), works with Zig 0.12+dev version
-* [emscripten](https://emscripten.org), version 3.1+
+* [zig](https://www.zig.org/download), works with Zig 0.14.0+ version
+* [emscripten](https://emscripten.org), version 4.0+
 * git (optional)
 * python3 (optional)
 
