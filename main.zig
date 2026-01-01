@@ -3,9 +3,16 @@ const std = @import("std");
 const c = @cImport({
     @cInclude("emscripten.h");
     @cInclude("emscripten/html5.h");
-    @cInclude("emscripten/html5_webgpu.h");
     @cInclude("webgpu/webgpu.h");
 });
+
+// Helper function to create WGPUStringView from string literal
+fn makeStringView(str: [*:0]const u8) c.WGPUStringView {
+    return c.WGPUStringView{
+        .data = str,
+        .length = std.mem.len(str),
+    };
+}
 
 const State = struct {
     // canvas
@@ -20,7 +27,7 @@ const State = struct {
         instance: c.WGPUInstance = null,
         device: c.WGPUDevice = null,
         queue: c.WGPUQueue = null,
-        swapchain: c.WGPUSwapChain = null,
+        surface: c.WGPUSurface = null,
         pipeline: c.WGPURenderPipeline = null,
     } = .{},
 
@@ -102,6 +109,7 @@ pub fn main() !void {
     state.wgpu.queue = c.wgpuDeviceGetQueue(state.wgpu.device);
 
     _ = resize(0, null, null);
+    createSurface();
     // _ = c.emscripten_set_resize_callback(2, null, false, resize); //FIXME: use `EMSCRIPTEN_EVENT_TARGET_WINDOW` const
 
     //-----------------
@@ -162,14 +170,14 @@ pub fn main() !void {
         // Vertex state
         .vertex = .{
             .module = shader_triangle,
-            .entryPoint = "vs_main",
+            .entryPoint = makeStringView("vs_main"),
             .bufferCount = 1,
             .buffers = &vertex_buffer_layout,
         },
         // Fragment state
         .fragment = &c.WGPUFragmentState{
             .module = shader_triangle,
-            .entryPoint = "fs_main",
+            .entryPoint = makeStringView("fs_main"),
             .targetCount = 1,
             // color target state
             .targets = &c.WGPUColorTargetState{
@@ -248,7 +256,7 @@ pub fn main() !void {
     //-----------------
 
     c.wgpuRenderPipelineRelease(state.wgpu.pipeline);
-    c.wgpuSwapChainRelease(state.wgpu.swapchain);
+    c.wgpuSurfaceRelease(state.wgpu.surface);
     c.wgpuQueueRelease(state.wgpu.queue);
     c.wgpuDeviceRelease(state.wgpu.device);
     c.wgpuInstanceRelease(state.wgpu.instance);
@@ -258,14 +266,16 @@ pub fn main() !void {
 // callbacks and functions
 //--------------------------------------------------
 
-fn draw() callconv(.C) void {
+fn draw() callconv(.c) void {
     // Update rotation
     state.vars.rot += 0.1;
     state.vars.rot = if (state.vars.rot >= 360) 0.0 else state.vars.rot;
     c.wgpuQueueWriteBuffer(state.wgpu.queue, state.res.ubuffer, 0, &state.vars.rot, @sizeOf(@TypeOf(state.vars.rot)));
 
-    // Create Texture View
-    const back_buffer = c.wgpuSwapChainGetCurrentTextureView(state.wgpu.swapchain);
+    // Get current surface texture
+    var surface_texture: c.WGPUSurfaceTexture = undefined;
+    c.wgpuSurfaceGetCurrentTexture(state.wgpu.surface, &surface_texture);
+    const back_buffer = c.wgpuTextureCreateView(surface_texture.texture, null);
 
     // Create Command Encoder
     const cmd_encoder = c.wgpuDeviceCreateCommandEncoder(state.wgpu.device, null);
@@ -303,9 +313,10 @@ fn draw() callconv(.C) void {
     c.wgpuCommandEncoderRelease(cmd_encoder);
     c.wgpuCommandBufferRelease(cmd_buffer);
     c.wgpuTextureViewRelease(back_buffer);
+    c.wgpuTextureRelease(surface_texture.texture);
 }
 
-fn resize(event_type: i32, ui_event: ?*const c.EmscriptenUiEvent, user_data: ?*anyopaque) callconv(.C) i32 {
+fn resize(event_type: i32, ui_event: ?*const c.EmscriptenUiEvent, user_data: ?*anyopaque) callconv(.c) i32 {
     _ = event_type;
     _ = ui_event;
     _ = user_data; // unused
@@ -319,45 +330,50 @@ fn resize(event_type: i32, ui_event: ?*const c.EmscriptenUiEvent, user_data: ?*a
     _ = c.emscripten_set_canvas_element_size(state.canvas.name.ptr, @intCast(state.canvas.width), @intCast(state.canvas.height));
     //c.emscripten_console_logf("canvas.size: %d x %d\n", state.canvas.width, state.canvas.height);
 
-    if (state.wgpu.swapchain != null) {
-        c.wgpuSwapChainRelease(state.wgpu.swapchain);
-        state.wgpu.swapchain = null;
+    if (state.wgpu.surface != null) {
+        configureSurface();
     }
-
-    state.wgpu.swapchain = createSwapChain();
 
     return 1;
 }
 
-fn createSwapChain() c.WGPUSwapChain {
-    const surface = c.wgpuInstanceCreateSurface(state.wgpu.instance, &c.WGPUSurfaceDescriptor{
-        .nextInChain = @ptrCast(&c.WGPUSurfaceDescriptorFromCanvasHTMLSelector{
-            .chain = .{ .sType = c.WGPUSType_SurfaceDescriptorFromCanvasHTMLSelector },
-            .selector = state.canvas.name.ptr,
-        }),
+fn createSurface() void {
+    const canvas_selector: [*:0]const u8 = @ptrCast(state.canvas.name.ptr);
+    const surface_source = c.WGPUEmscriptenSurfaceSourceCanvasHTMLSelector{
+        .chain = .{ .sType = c.WGPUSType_EmscriptenSurfaceSourceCanvasHTMLSelector },
+        .selector = makeStringView(canvas_selector),
+    };
+    state.wgpu.surface = c.wgpuInstanceCreateSurface(state.wgpu.instance, &c.WGPUSurfaceDescriptor{
+        .nextInChain = @ptrCast(@constCast(&surface_source)),
     });
+    configureSurface();
+}
 
-    return c.wgpuDeviceCreateSwapChain(state.wgpu.device, surface, &c.WGPUSwapChainDescriptor{
-        .usage = c.WGPUTextureUsage_RenderAttachment, // Ensure this includes render attachment usage.
-        .format = c.WGPUTextureFormat_BGRA8Unorm, // Use a valid color format.
+fn configureSurface() void {
+    const config = c.WGPUSurfaceConfiguration{
+        .device = state.wgpu.device,
+        .format = c.WGPUTextureFormat_BGRA8Unorm,
+        .usage = c.WGPUTextureUsage_RenderAttachment,
         .width = @intCast(state.canvas.width),
         .height = @intCast(state.canvas.height),
-        .presentMode = c.WGPUPresentMode_Fifo, // Use an appropriate present mode.
-    });
+        .presentMode = c.WGPUPresentMode_Fifo,
+        .alphaMode = c.WGPUCompositeAlphaMode_Auto,
+    };
+    c.wgpuSurfaceConfigure(state.wgpu.surface, &config);
 }
 
 fn createShader(code: [*:0]const u8, label: [*:0]const u8) c.WGPUShaderModule {
-    const wgsl = c.WGPUShaderModuleWGSLDescriptor{
-        .chain = .{ .sType = c.WGPUSType_ShaderModuleWGSLDescriptor },
-        .code = code,
+    const wgsl = c.WGPUShaderSourceWGSL{
+        .chain = .{ .sType = c.WGPUSType_ShaderSourceWGSL },
+        .code = makeStringView(code),
     };
 
-    return c.wgpuDeviceCreateShaderModule(state.wgpu.device, &c.WGPUShaderModuleDescriptor{ .nextInChain = @ptrCast(&wgsl), .label = label });
+    return c.wgpuDeviceCreateShaderModule(state.wgpu.device, &c.WGPUShaderModuleDescriptor{ .nextInChain = @ptrCast(@constCast(&wgsl)), .label = makeStringView(label) });
 }
 
 fn createBuffer(data: ?*const anyopaque, size: usize, usage: c.WGPUBufferUsage) c.WGPUBuffer {
     const buffer = c.wgpuDeviceCreateBuffer(state.wgpu.device, &c.WGPUBufferDescriptor{
-        .usage = @as(c.enum_WGPUBufferUsage, c.WGPUBufferUsage_CopyDst) | usage,
+        .usage = c.WGPUBufferUsage_CopyDst | usage,
         .size = size,
     });
     c.wgpuQueueWriteBuffer(state.wgpu.queue, buffer, 0, data, size);

@@ -29,6 +29,7 @@ Build the example with `zig build` command, which will generate 3 new files (`.h
 zig build --sysroot [path/to/emsdk]/upstream/emscripten/cache/sysroot
 ```
 
+##### macOS + brew
 Example with Emscripten installed with Homebrew (`brew install emscripten`, v4.0.8) on macOS :
 ```
 zig build --sysroot /usr/local/Cellar/emscripten/4.0.8/libexec/cache/sysroot
@@ -36,6 +37,28 @@ zig build --sysroot /usr/local/Cellar/emscripten/4.0.8/libexec/cache/sysroot
 Or automatically search for the active version :
 ```
 zig build --sysroot `readlink -f $(brew --prefix emscripten)`/libexec/cache/sysroot
+```
+
+##### linux + pixi
+
+1. install [pixi](https://pixi.sh)
+
+2. download latest [binaryen-linux.conda](https://github.com/AClon314/binaryen-feedstock/releases) and [emscripten-linux.conda](https://github.com/AClon314/emscripten-feedstock/releases)
+   because newer versions of them aren't available on conda-forge. (windows/macOS need build these 2 conda file by `conda-build .`)
+
+3. If you want to install them in global space *(pixi prefer install for each repo in `./.pixi`, but I like install in global like conda)*
+   Copy conda files to `~/.pixi/conda-files`, and add these lines to `~/.pixi/manifests/pixi-global.toml`:
+```toml
+[envs.emscripten]
+channels = ["conda-forge"]
+dependencies = {binaryen = {path = "../conda-files/binaryen-125-hec23631_0.conda"}, emscripten = {path = "../conda-files/emscripten-4.0.22-h1f94ec8_0.conda"}}
+exposed = {wasm-as = "wasm-as", wasm-ctor-eval = "wasm-ctor-eval", wasm-dis = "wasm-dis", wasm-emscripten-finalize = "wasm-emscripten-finalize", wasm-fuzz-lattices = "wasm-fuzz-lattices", wasm-fuzz-types = "wasm-fuzz-types", wasm-merge = "wasm-merge", wasm-metadce = "wasm-metadce", wasm-opt = "wasm-opt", wasm-reduce = "wasm-reduce", wasm-shell = "wasm-shell", wasm-split = "wasm-split", wasm2js = "wasm2js", "emcc" = "emcc", "em++" = "em++"}
+```
+
+4. run `pixi global sync` (or `pixi i` if install in local repo)
+5. build
+```sh
+zig build --sysroot ~/.pixi/envs/emscripten/lib/emscripten-4.0.22/cache/sysroot
 ```
 
 > [!NOTE] 

@@ -5,12 +5,11 @@ pub fn build(b: *std.Build) !void {
     const target = b.resolveTargetQuery(.{ .cpu_arch = .wasm32, .os_tag = .emscripten });
     const optimize = b.standardOptimizeOption(.{});
 
-    // Build as static library
-    const lib = b.addStaticLibrary(.{
+    // Build as static library (Zig 0.12+/0.13 API)
+    const lib = b.addLibrary(.{
         .name = "webgpu",
-        .root_source_file = b.path("main.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{ .root_source_file = b.path("main.zig"), .target = target, .optimize = optimize }),
+        .linkage = .static,
     });
     lib.linkLibC();
 
@@ -25,6 +24,12 @@ pub fn build(b: *std.Build) !void {
     const emcc_include = b.pathJoin(&.{ arg_sysroot.?, "include" });
     lib.addSystemIncludePath(.{ .cwd_relative = emcc_include }); // isystem
 
+    // Add WebGPU headers from emdawnwebgpu port
+    // Extract emscripten root from sysroot path (remove /cache/sysroot)
+    const emsdk_root = b.pathJoin(&.{ arg_sysroot.?, "..", ".." });
+    const webgpu_include = b.pathJoin(&.{ emsdk_root, "cache", "ports", "emdawnwebgpu", "emdawnwebgpu_pkg", "webgpu", "include" });
+    lib.addSystemIncludePath(.{ .cwd_relative = webgpu_include });
+
     // Define `emcc` executable name
     const emcc_exe = switch (builtin.os.tag) {
         .windows => "emcc.bat",
@@ -37,17 +42,16 @@ pub fn build(b: *std.Build) !void {
     emcc_cmd.addArgs(&[_][]const u8{
         "-o",
         b.fmt("{s}.html", .{lib.name}),
-        "-Oz",
+        "-O0",
         "--shell-file=shell.html",
         "-sASYNCIFY",
-        "-sUSE_WEBGPU=1",
+        "--use-port=emdawnwebgpu",
     });
     emcc_cmd.step.dependOn(&lib.step);
 
     // `emcc` flags necessary for debug builds
     if (optimize == .Debug or optimize == .ReleaseSafe) {
         emcc_cmd.addArgs(&[_][]const u8{
-            "-sUSE_OFFSET_CONVERTER",
             "-sASSERTIONS",
         });
     }
